@@ -1,0 +1,26 @@
+{
+	"author": {
+	  "name": "Aritz Beobide-Cardinal",
+	  "email": "aritz@aritzcracker.ca"
+	},
+	"browser": "browser.js",
+	"bugs": {
+	  "url": "https://github.com/ARitz-Cracker/better-cross-fetch/issues"
+	},
+	"dependencies": {},
+	"description": "A cross-platform (Browser and NodeJS) better \"fetch\" API. It's better because I made it.",
+	"devDependencies": {},
+	"homepage": "https://github.com/ARitz-Cracker/better-cross-fetch",
+	"license": "GPL3",
+	"main": "index.js",
+	"name": "better-cross-fetch",
+	"repository": {
+	  "type": "git",
+	  "url": "git+https://github.com/ARitz-Cracker/better-cross-fetch.git"
+	},
+	"scripts": {},
+	"version": "0.0.1",
+	"browserRequirifier":{
+		"include":[]
+	}
+  }
