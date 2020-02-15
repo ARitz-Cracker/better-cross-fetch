@@ -84,8 +84,6 @@ const betterCrossFetch = async function(url, options = {}){
 	}else{
 		httpOptions.method = "POST";
 	}
-
-	console.log(url);
 	const req = h.request(url, httpOptions);
 	for(const header in options.headers){
 		req.setHeader(header, options.headers[header]);
@@ -99,13 +97,13 @@ const betterCrossFetch = async function(url, options = {}){
 			try{
 				if(response.statusCode >= 300 && response.statusCode < 400){
 					if(response.headers.location.startsWith("https://")){
-						requestOptions.href = response.headers.location;
+						url.href = response.headers.location;
 					}else if(response.headers.location.startsWith("/")){
-						requestOptions.pathname = response.headers.location;
+						url.pathname = response.headers.location;
 					}else{
-						requestOptions.pathname += response.headers.location;
+						url.pathname += response.headers.location;
 					}
-					resolve(httpRequest(requestOptions, method, headers, dataOrReadableStream));
+					resolve(betterCrossFetch(url, options));
 					return;
 				}
 				let streamOutput;
@@ -186,6 +184,7 @@ const betterCrossFetch = async function(url, options = {}){
 			const boundary = "nodejs-" + crypto.randomBytes(42).toString("base64").replace(/\//g, "_").replace(/\+/g, "-") + "-nodejs";
 			let totalLength = 0;
 			const postDataHeaders = {};
+			const postDataStreams = {};
 			const endOfMessage = Buffer.from("--" + boundary + "--");
 			req.setHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
 			for(const name in options.postData){
@@ -199,7 +198,7 @@ const betterCrossFetch = async function(url, options = {}){
 						"Content-Disposition: form-data; name=\"" + querystring.escape(name) + "\"\r\n" +
 						"\r\n"
 					);
-					options.postData[name] = new BufferToStream(value);
+					postDataStreams[name] = new BufferToStream(value);
 					totalLength += value.length + 2; // 2 extra for the CRLF after the multipart body
 				}else{
 					if(value.size == null && value.value.length == null){
@@ -212,9 +211,9 @@ const betterCrossFetch = async function(url, options = {}){
 						"\r\n"
 					);
 					if(value.value instanceof Uint8Array){
-						options.postData[name] = new BufferToStream(value.value);
+						postDataStreams[name] = new BufferToStream(value.value);
 					}else{
-						options.postData[name] = value.value; // assume stream
+						postDataStreams[name] = value.value; // assume stream
 					}
 					totalLength += (value.size || value.value.length) + 2;
 				}
@@ -224,11 +223,11 @@ const betterCrossFetch = async function(url, options = {}){
 			totalLength += endOfMessage.length;
 			req.setHeader("Content-Length", totalLength);
 			uploadStream.totalLength = totalLength;
-			for(const name in options.postData){
+			for(const name in postDataStreams){
 				uploadStream.write(postDataHeaders[name]);
-				options.postData[name].pipe(uploadStream, {end: false});
+				postDataStreams[name].pipe(uploadStream, {end: false});
 				await new Promise((resolve) => {
-					options.postData[name].once("end", resolve);
+					postDataStreams[name].once("end", resolve);
 				})
 				uploadStream.write("\r\n");
 			}
