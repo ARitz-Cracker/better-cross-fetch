@@ -21,12 +21,13 @@ const defaultOptions = {
 	onDownloadProgress: Function.prototype
 }
 class CrossFetchRequestError extends Error{
-	constructor(status, statusText, headers = {}, response = null){
+	constructor(status, statusText, headers = {}, response = null, url){
 		super(status + " " + statusText);
 		this.status = status;
 		this.statusText = statusText;
 		this.response = response;
 		this.headers = headers;
+		this.url = url;
 	}
 }
 CrossFetchRequestError.prototype.name = "CrossFetchRequestError";
@@ -99,14 +100,15 @@ const betterCrossFetch = function(url, options = {}){
 				headers[header] = value;
 			});
 			if(xhr.status >= 400 && options.throwOnErrorStatus){
-				reject(new CrossFetchRequestError(xhr.status, xhr.statusText, headers, xhr.response));
+				reject(new CrossFetchRequestError(xhr.status, xhr.statusText, headers, xhr.response, xhr.responseURL));
 				return;
 			}
 			resolve({
 				status: xhr.status,
 				statusText: xhr.statusText,
 				response: xhr.response,
-				headers
+				headers,
+				url: xhr.responseURL
 			});
 		}
         let body;

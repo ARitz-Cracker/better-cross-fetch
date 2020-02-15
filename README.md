@@ -53,7 +53,8 @@ That will return something like this:
 	response: "<!DOCTYPE html>...",
 	headers: {
 		server: "nginx/xxx"
-	}
+	},
+	url: "https://www.aritzcracker.ca/" // The final URL after any redirects
 }
 ```
 
@@ -93,3 +94,7 @@ On NodeJS, the values can be `string`'s, `Buffer`'s, `Uint8Array`'s or an object
 	value: someReadableStream || someBuffer // THIS IS REQUIRED
 }
 ```
+
+## Any pitfalls?
+
+There are 2 http statuses, 307 and 308, that require forms to be re-submitted at the redirect. POSTing streams will break things when those redirects occuer, because the stream has already been consumed on the first request, and this library doesn't provide a way to restart streams when this happens.

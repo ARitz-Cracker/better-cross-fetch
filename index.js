@@ -31,12 +31,13 @@ const defaultOptions = {
 }
 
 class CrossFetchRequestError extends Error{
-	constructor(status, statusText, headers = {}, response = null){
+	constructor(status, statusText, headers = {}, response = null, url){
 		super(status + " " + statusText);
 		this.status = status;
 		this.statusText = statusText;
 		this.response = response;
 		this.headers = headers;
+		this.url = url;
 	}
 }
 CrossFetchRequestError.prototype.name = "CrossFetchRequestError";
@@ -96,6 +97,16 @@ const betterCrossFetch = async function(url, options = {}){
 		req.once("response", async (response) => {
 			try{
 				if(response.statusCode >= 300 && response.statusCode < 400){
+					if(response.statusCode === 304){
+						resolve({
+							status: response.statusCode,
+							statusText: http.STATUS_CODES[response.statusCode],
+							headers: response.headers,
+							url: url.href
+						});
+						return;
+					}
+
 					if(response.headers.location.startsWith("https://")){
 						url.href = response.headers.location;
 					}else if(response.headers.location.startsWith("/")){
@@ -107,7 +118,20 @@ const betterCrossFetch = async function(url, options = {}){
 							url.pathname = url.pathname.substring(0, url.pathname.lastIndexOf("/") + 1) + response.headers.location;
 						}
 					}
-					resolve(betterCrossFetch(url, options));
+					if(response.statusCode === 307 || response.statusCode === 308){
+						// 307 and 308 require the method do not change on ridirects
+						resolve(betterCrossFetch(url, options));
+					}else{
+						// Everyone else effectively treats 301 and 302 as a 303. So I will too
+						resolve(betterCrossFetch(url, {
+							headers: options.headers,
+							responseType: options.responseType,
+							throwOnErrorStatus: options.throwOnErrorStatus,
+							onUploadProgress: options.onUploadProgress,
+							onDownloadProgress: options.onDownloadProgress
+						}));
+					}
+					
 					return;
 				}
 				let streamOutput;
@@ -154,14 +178,16 @@ const betterCrossFetch = async function(url, options = {}){
 						response.statusCode,
 						http.STATUS_CODES[response.statusCode],
 						response.headers,
-						finalResponseData
+						finalResponseData,
+						url.href
 					);
 				}
 				resolve({
 					status: response.statusCode,
 					statusText: http.STATUS_CODES[response.statusCode],
 					headers: response.headers,
-					response: finalResponseData
+					response: finalResponseData,
+					url: url.href
 				});
 			}catch(ex){
 				reject(ex);
