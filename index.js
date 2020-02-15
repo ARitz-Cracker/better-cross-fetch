@@ -101,7 +101,11 @@ const betterCrossFetch = async function(url, options = {}){
 					}else if(response.headers.location.startsWith("/")){
 						url.pathname = response.headers.location;
 					}else{
-						url.pathname += response.headers.location;
+						if(url.pathname.endsWith("/")){
+							url.pathname += response.headers.location;
+						}else{
+							url.pathname = url.pathname.substring(0, url.pathname.lastIndexOf("/") + 1) + response.headers.location;
+						}
 					}
 					resolve(betterCrossFetch(url, options));
 					return;
