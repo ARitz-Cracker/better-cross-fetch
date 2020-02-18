@@ -89,7 +89,7 @@ const betterCrossFetch = function(url, options = {}){
 				break;
 		}
 		xhr.onerror = (e) => {
-			reject(new CrossFetchRequestError(0, "Network Error"));
+			reject(new CrossFetchRequestError(0, "Unable to connect"));
 		}
 		xhr.onload = (e) => {
 			const headers = {};
