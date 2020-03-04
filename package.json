@@ -19,7 +19,7 @@
 	  "url": "git+https://github.com/ARitz-Cracker/better-cross-fetch.git"
 	},
 	"scripts": {},
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"browserRequirifier":{
 		"include":[]
 	}

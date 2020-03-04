@@ -57,12 +57,16 @@ const betterCrossFetch = function(url, options = {}){
 			url += "?" + encodeQuerystring(options.getData);
 		}
 		let method;
-		if(options.responseType === RESPONSE_TYPES.HEAD){
-			method = "HEAD";
-		}else if(options.postDataType === POST_TYPES.NONE){
-			method = "GET";
+		if(options.method){
+			method = options.method;
 		}else{
-			method = "POST";
+			if(options.responseType === RESPONSE_TYPES.HEAD){
+				method = "HEAD";
+			}else if(options.postDataType === POST_TYPES.NONE){
+				method = "GET";
+			}else{
+				method = "POST";
+			}
 		}
 		xhr.open(method, url);
         for (const header in options.headers){

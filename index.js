@@ -78,13 +78,18 @@ const betterCrossFetch = async function(url, options = {}){
 	}else{
 		throw new Error("Must start with \"http://\" or \"https://\"");
 	}
-	if(options.responseType === RESPONSE_TYPES.HEAD){
-		httpOptions.method = "HEAD";
-	}else if(options.postDataType === POST_TYPES.NONE){
-		httpOptions.method = "GET";
+	if(options.method){
+		httpOptions.method = options.method;
 	}else{
-		httpOptions.method = "POST";
+		if(options.responseType === RESPONSE_TYPES.HEAD){
+			httpOptions.method = "HEAD";
+		}else if(options.postDataType === POST_TYPES.NONE){
+			httpOptions.method = "GET";
+		}else{
+			httpOptions.method = "POST";
+		}
 	}
+
 	const req = h.request(url, httpOptions);
 	for(const header in options.headers){
 		req.setHeader(header, options.headers[header]);
