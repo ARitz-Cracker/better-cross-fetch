@@ -52,7 +52,9 @@ const fillDefaults = function(options){
 const betterCrossFetch = function(url, options = {}){
 	fillDefaults(options);
 	const xhr = new XMLHttpRequest();
+	let resolvePromise;
 	const returnedPromise = new Promise((resolve, reject) => {
+		resolvePromise = resolve;
 		if(options.getData){
 			url += "?" + encodeQuerystring(options.getData);
 		}
@@ -157,6 +159,7 @@ const betterCrossFetch = function(url, options = {}){
 	});
 	returnedPromise.abort = () => {
 		xhr.abort();
+		resolvePromise(null);
 	}
 	return returnedPromise;
 }
