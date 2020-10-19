@@ -86,6 +86,7 @@ const betterCrossFetch = function(url, options = {}){
 				break;
 			case RESPONSE_TYPES.JSON:
 				xhr.responseType = "json";
+				xhr.setRequestHeader("Accept", "application/json");
 				break;
 			case RESPONSE_TYPES.BUFFER:
 				xhr.responseType = "arraybuffer";
@@ -150,7 +151,7 @@ const betterCrossFetch = function(url, options = {}){
 				xhr.send(body);
 				break;
 			case POST_TYPES.JSON:
-				xhr.setRequestHeader("Content-Type", "application/json");
+				xhr.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
 				xhr.send((new TextEncoder()).encode(JSON.stringify(options.postData)));
 				break;
 			default:

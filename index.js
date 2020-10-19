@@ -94,7 +94,9 @@ const betterCrossFetch = async function(url, options = {}){
 	for(const header in options.headers){
 		req.setHeader(header, options.headers[header]);
 	}
-
+	if(options.responseType === RESPONSE_TYPES.JSON){
+		req.setHeader("Accept", "application/json");
+	}
 	const returnablePromise = new Promise((resolve, reject) => {
 		req.once('error', (err) => {
 			reject(err);
@@ -173,7 +175,7 @@ const betterCrossFetch = async function(url, options = {}){
 							try{
 								finalResponseData = JSON.parse(finalResponseData);
 							}catch(ex){
-
+								finalResponseData = null;
 							}
 						}
 					}
@@ -271,7 +273,7 @@ const betterCrossFetch = async function(url, options = {}){
 			break;
 		}
 		case POST_TYPES.JSON:{
-			req.setHeader("Content-Type", "application/json");
+			req.setHeader("Content-Type", "application/json; charset=UTF-8");
 			const data = Buffer.from(JSON.stringify(options.postData));
 			req.setHeader("Content-Length", data.length);
 			uploadStream.totalLength = data.length;
