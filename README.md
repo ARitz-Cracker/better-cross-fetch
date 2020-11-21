@@ -67,7 +67,7 @@ It chooses how to interpret the server response. Here are the possible values an
 * `RESPONSE_TYPES.JSON` the response will be parsed as JSON, the result's `response` property will be the resulting object.
 * `RESPONSE_TYPES.BUFFER` the result's `response` property will be an `ArrayBuffer` on the browser, or a `Buffer` in node.
 * `RESPONSE_TYPES.BLOB` (Only available on browsers) the result's `response` property will be a `Blob`.
-* `RESPONSE_TYPES.STREAM` (Only available on browsers) the result's `response` property will be a `ReadableStream`.
+* `RESPONSE_TYPES.STREAM` (Only available on NodeJS) the result's `response` property will be a `ReadableStream`.
 
 ## Can I add querystring data to the URL without doing it myself?
 
