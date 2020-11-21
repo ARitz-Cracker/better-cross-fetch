@@ -141,30 +141,35 @@ const betterCrossFetch = async function(url, options = {}){
 					
 					return;
 				}
+				const length = Number(response.headers["content-length"]);
 				let streamOutput;
-				let responseProgress = new PassthroughProgress({length: Number(response.headers["content-length"])});
+				let responseProgress = new PassthroughProgress({length});
 				responseProgress.on("progress", options.onDownloadProgress);
 				response.pipe(responseProgress);
 				let finalResponseData;
-				switch (response.headers["content-encoding"]) {
-					case "br":
-						streamOutput = zlib.createBrotliDecompress();
-						responseProgress.pipe(streamOutput);
-						break;
-					case "gzip":
-						streamOutput = zlib.createGunzip();
-						responseProgress.pipe(streamOutput);
-						break;
-					case "deflate":
-						streamOutput = zlib.createInflate();
-						responseProgress.pipe(streamOutput);
-						break;
-					default:
-						streamOutput = responseProgress;
-						break;
+				if(length === 0 || response.statusCode === 204 || options.responseType === RESPONSE_TYPES.HEAD){
+					streamOutput = responseProgress;
+				}else{
+					switch (response.headers["content-encoding"]) {
+						case "br":
+							streamOutput = zlib.createBrotliDecompress();
+							responseProgress.pipe(streamOutput);
+							break;
+						case "gzip":
+							streamOutput = zlib.createGunzip();
+							responseProgress.pipe(streamOutput);
+							break;
+						case "deflate":
+							streamOutput = zlib.createInflate();
+							responseProgress.pipe(streamOutput);
+							break;
+						default:
+							streamOutput = responseProgress;
+							break;
+					}
 				}
-				if(options.responseType === RESPONSE_TYPES.NONE || response.statusCode === 204){
-					responseProgress.on("data", Function.prototype);
+				if(options.responseType === RESPONSE_TYPES.HEAD){
+					streamOutput.on("data", Function.prototype);
 				}else if(options.responseType === RESPONSE_TYPES.STREAM){
 					finalResponseData = streamOutput;
 				}else{
