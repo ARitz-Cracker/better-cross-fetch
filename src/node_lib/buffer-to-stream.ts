@@ -1,20 +1,23 @@
 
-const{Writable, Readable} = require("stream");
-class StreamToBuffer extends Writable {
+import {Writable, Readable} from "stream";
+
+export class StreamToBuffer extends Writable {
+	private _buffer: Buffer;
+	finished: boolean = false;
 	constructor(){
 		super();
 		this._buffer = Buffer.alloc(0);
 	}
-	_write(chunk, encoding, callback){
+	_write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void){
 		this._buffer = Buffer.concat([ this._buffer, chunk ], this._buffer.length + chunk.length);
 		callback();
 	}
-	_final(callback){
+	_final(callback: (error?: Error | null) => void){
 		this.finished = true;
 		this.emit("result", this._buffer);
 		callback();
 	}
-	result(){
+	result(): Promise<Buffer> {
 		if(this.finished){
 			return Promise.resolve(this._buffer);
 		}
@@ -24,12 +27,13 @@ class StreamToBuffer extends Writable {
 		});
 	}
 }
-class BufferToStream extends Readable {
-	constructor(buffer){
+export class BufferToStream extends Readable {
+	private _buffer: any;
+	constructor(buffer: Buffer){
 		super();
 		this._buffer = buffer;
 	}
-	_read(size){
+	_read(size: number){
 		if(size >= this._buffer.length){
 			this.push(this._buffer);
 			this.push(null);
@@ -39,8 +43,3 @@ class BufferToStream extends Readable {
 		}
 	}
 }
-
-module.exports = {
-	BufferToStream,
-	StreamToBuffer
-};

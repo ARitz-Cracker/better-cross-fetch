@@ -1,6 +1,8 @@
-const {Transform} = require("stream");
-class PassthroughProgress extends Transform{
-	constructor(options){
+import { Transform, TransformCallback, TransformOptions } from "stream";
+export class PassthroughProgress extends Transform{
+	totalLength: number;
+	currentLength: number;
+	constructor(options: TransformOptions & {length?: number}){
 		super(options);
 		this.totalLength = 0;
 		this.currentLength = 0;
@@ -8,7 +10,7 @@ class PassthroughProgress extends Transform{
 			this.totalLength = options.length;
 		}
 	}
-	_transform(data, encoding, callback){
+	_transform(data: any, encoding: BufferEncoding, callback: TransformCallback){
 		if(typeof data === "string"){
 			data = Buffer.from(data, encoding);
 		}
@@ -18,4 +20,3 @@ class PassthroughProgress extends Transform{
 		callback();
 	}
 }
-module.exports = {PassthroughProgress};
