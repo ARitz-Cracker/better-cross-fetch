@@ -6,11 +6,22 @@ import { BufferToStream, StreamToBuffer } from "./node_lib/buffer-to-stream";
 import { PassthroughProgress } from "./node_lib/passthrough-progress";
 import querystring from "querystring";
 import { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, ResponseType, ResponseTypeMap } from "./common";
+import { randomBytes } from "crypto";
+import { Readable } from "stream";
 
 const HTTPS_REQUEST_AGENT = new https.Agent();
 const HTTP_REQUEST_AGENT = new http.Agent();
 
-function emptyBody<T extends ResponseType>(t: ResponseType): ResponseTypeMap[T] {
+function mimeEncodeIfNeeded(str: string): string {
+	// Not very effecient, but hey, it works...
+	const encodedString = querystring.escape("\t\r\n");
+	if (encodedString.includes("%")) {
+		return "=?UTF-8?Q?" + encodedString.replace(/%/g, "=") + "?=";
+	}
+	return str;
+}
+
+function emptyBody<T extends ResponseType>(t: T): ResponseTypeMap[T] {
 	switch (t) {
 		case "blob":
 			// No idea why these any's are required
@@ -75,6 +86,12 @@ export function betterCrossFetch<T extends ResponseType>(
 			}
 			if(options.responseType === "json"){
 				req.setHeader("Accept", "application/json");
+			}
+			if (abortController) {
+				abortController.signal.onabort = (e) => {
+					req.destroy();
+					resolve(null);
+				};
 			}
 			req.once('error', (err) => {
 				reject(err);
@@ -158,17 +175,24 @@ export function betterCrossFetch<T extends ResponseType>(
 						finalResponseData = streamOutput;
 					}else{
 						finalResponseData = await streamOutput.pipe(new StreamToBuffer()).result();
-						if(options.responseType == "blob") {
-							finalResponseData = new Blob([finalResponseData]);
-						}else if(options.responseType !== "buffer"){
-							finalResponseData = finalResponseData.toString();
-							if(options.responseType === "json"){
+						switch (options.responseType) {
+							case "blob":
+								finalResponseData = new Blob([finalResponseData]);
+								break;
+							case "buffer":
+								break;
+							case "json":
 								try{
-									finalResponseData = JSON.parse(finalResponseData);
+									finalResponseData = JSON.parse(finalResponseData.toString());
 								}catch(ex){
 									finalResponseData = null;
 								}
-							}
+								break;
+							case "dom":
+								// Explore this, jsdom?
+							case "text":
+								finalResponseData = finalResponseData.toString();
+								break;
 						}
 					}
 					if(statusCode >= 400 && options.throwOnErrorStatus){
@@ -190,8 +214,102 @@ export function betterCrossFetch<T extends ResponseType>(
 				}catch(ex){
 					reject(ex);
 				}
-	
-			});	
+			});
+			const uploadStream = new PassthroughProgress();
+			uploadStream.pipe(req);
+			if (options.onUploadProgress) {
+				uploadStream.on("progress", options.onUploadProgress);
+			}
+			if (options.post) {
+				switch(options.post.type){
+					case "json":{
+						req.setHeader("Content-Type", "application/json; charset=UTF-8");
+						const data = Buffer.from(JSON.stringify(options.post.data));
+						req.setHeader("Content-Length", data.length);
+						uploadStream.totalLength = data.length;
+						(new BufferToStream(data)).pipe(uploadStream);
+						break;
+					}
+					case "multipart":{
+						const optionsPost = options.post;
+						(async () => {
+							try{
+								const boundary = "nodejs-" + randomBytes(42).toString("base64").replace(/\//g, "_").replace(/\+/g, "-") + "-nodejs";
+								let totalLength = 0;
+								const postDataHeaders: {[name: string]: Buffer;} = {};
+								const postDataStreams: {[name: string]: Readable;} = {};
+								const endOfMessage = Buffer.from("--" + boundary + "--");
+								req.setHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+								for(const name in optionsPost.data){
+									let value = optionsPost.data[name];
+									if(typeof value === "string"){
+										value = Buffer.from(value);
+									}
+									if(value instanceof Uint8Array){
+										postDataHeaders[name] = Buffer.from(
+											"--" + boundary + "\r\n" +
+											"Content-Disposition: form-data; name=\"" + mimeEncodeIfNeeded(name) + "\"\r\n" +
+											"\r\n"
+										);
+										postDataStreams[name] = new BufferToStream(value);
+										totalLength += value.length + 2; // 2 extra for the CRLF after the multipart body
+									}else if (value instanceof Blob){
+										postDataHeaders[name] = Buffer.from(
+											"--" + boundary + "\r\n" +
+											"Content-Disposition: form-data; name=\"" + mimeEncodeIfNeeded(name) + "\"; filename=\"undefined\"\r\n" +
+											"Content-Type: " + (value.type || "application/octet-stream") + "\r\n" +
+											"\r\n"
+										);
+										postDataStreams[name] = new BufferToStream(Buffer.from(await value.arrayBuffer()));
+										totalLength += value.length + 2; // 2 extra for the CRLF after the multipart body
+									}else{
+										postDataHeaders[name] = Buffer.from(
+											"--" + boundary + "\r\n" +
+											"Content-Disposition: form-data; name=\"" + mimeEncodeIfNeeded(name) + "\"; filename=\"" + mimeEncodeIfNeeded(value.filename + "") + "\"\r\n" +
+											"Content-Type: " + (value.type || "application/octet-stream") + "\r\n" +
+											"\r\n"
+										);
+										if(value.value instanceof Uint8Array){
+											postDataStreams[name] = new BufferToStream(value.value);
+										}else{
+											postDataStreams[name] = value.value; // assume stream
+										}
+										totalLength += value.size + 2;
+									}
+									totalLength += postDataHeaders[name].length;
+								}
+								totalLength += endOfMessage.length;
+								req.setHeader("Content-Length", totalLength);
+								uploadStream.totalLength = totalLength;
+								for(const name in postDataStreams){
+									uploadStream.write(postDataHeaders[name]);
+									postDataStreams[name].pipe(uploadStream, {end: false});
+									await new Promise((resolve) => {
+										postDataStreams[name].once("end", resolve);
+									})
+									uploadStream.write("\r\n");
+								}
+								uploadStream.write(endOfMessage);
+								uploadStream.end();
+							}catch(ex){
+								reject(ex);
+							}
+						})();
+						
+						break;
+					}
+					case "uri":{
+						req.setHeader("Content-Type", "application/x-www-form-urlencoded");
+						const data = Buffer.from(new URLSearchParams(options.post.data) + "");
+						uploadStream.totalLength = data.length;
+						req.setHeader("Content-Length", data.length);
+						(new BufferToStream(data)).pipe(uploadStream);
+						break;
+					}
+				}
+			}else{
+				uploadStream.end();
+			}
 		}catch(ex){
 			reject(ex);
 		}

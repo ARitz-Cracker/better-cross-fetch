@@ -2,7 +2,7 @@ import { Transform, TransformCallback, TransformOptions } from "stream";
 export class PassthroughProgress extends Transform{
 	totalLength: number;
 	currentLength: number;
-	constructor(options: TransformOptions & {length?: number}){
+	constructor(options?: TransformOptions & {length?: number}){
 		super(options);
 		this.totalLength = 0;
 		this.currentLength = 0;

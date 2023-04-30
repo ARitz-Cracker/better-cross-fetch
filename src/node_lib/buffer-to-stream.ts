@@ -28,8 +28,8 @@ export class StreamToBuffer extends Writable {
 	}
 }
 export class BufferToStream extends Readable {
-	private _buffer: any;
-	constructor(buffer: Buffer){
+	private _buffer: Uint8Array;
+	constructor(buffer: Uint8Array){
 		super();
 		this._buffer = buffer;
 	}
@@ -38,8 +38,8 @@ export class BufferToStream extends Readable {
 			this.push(this._buffer);
 			this.push(null);
 		}else{
-			this.push(this._buffer.slice(0, size));
-			this._buffer = this._buffer.slice(size);
+			this.push(this._buffer.subarray(0, size));
+			this._buffer = this._buffer.subarray(size);
 		}
 	}
 }
