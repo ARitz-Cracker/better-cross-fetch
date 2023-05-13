@@ -8,6 +8,7 @@ import querystring from "querystring";
 import { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, ResponseType, ResponseTypeMap } from "./common";
 import { randomBytes } from "crypto";
 import { Readable } from "stream";
+export { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, ResponseType } from "./common";
 
 const HTTPS_REQUEST_AGENT = new https.Agent();
 const HTTP_REQUEST_AGENT = new http.Agent();

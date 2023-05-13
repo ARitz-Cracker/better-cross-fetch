@@ -1,4 +1,5 @@
 import { BetterCrossFetchOptions, ResponseType, BetterCrossFetchResponse, CrossFetchRequestError} from "./common";
+export { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, ResponseType } from "./common";
 
 export function betterCrossFetch<T extends ResponseType>(
 	url: string | URL,
