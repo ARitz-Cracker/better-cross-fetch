@@ -19,13 +19,17 @@ export function betterCrossFetch<T extends ResponseType>(
 	return new Promise((resolve, reject) => {
 		try{
 			const xhr = new XMLHttpRequest();
-			if (options.getData) {
-				if (options.getData instanceof URLSearchParams) {
-					url += "&" + options.getData;
-				}else{
-					url += "&" + new URLSearchParams(options.getData);
-				}
-				
+			if(typeof url === "string"){
+				url = new URL(url, document.location + "");
+			}
+			if(options.getData){
+				url.searchParams.forEach((_, k, params) => {
+					params.delete(k);
+				});
+				(new URLSearchParams(options.getData)).forEach((v, k) => {
+					(url as URL).searchParams.set(k, v);
+				})
+				delete options.getData;
 			}
 			xhr.open(
 				options.responseType == "head" ? "HEAD" :
@@ -99,7 +103,9 @@ export function betterCrossFetch<T extends ResponseType>(
 					resolve(null);
 				}
 			}
-			if (options.post) {
+			if (options.post instanceof FormData) {
+				xhr.send(options.post);
+			}else if (options.post) {
 				switch(options.post.type) {
 					case "uri":
 						xhr.send(new URLSearchParams(options.post.data));

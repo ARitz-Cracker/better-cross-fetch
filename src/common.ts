@@ -15,6 +15,7 @@ export type ResponseTypeMap = {
 export type NodeFile = {
 	size: number,
 	filename?: string,
+	/** the mime type */
 	type?: string,
 	value: Buffer | Readable
 }
@@ -41,7 +42,7 @@ export interface BetterCrossFetchOptions<T extends ResponseType> {
 	throwOnErrorStatus?: boolean,
 	// Why limit people?
 	getData?: URLSearchParams | {[name: string]: string;} | Record<string, string> | [string, string][],
-	post?: PostDataText | PostDataJson | PostDataMultipart,
+	post?: PostDataText | PostDataJson | PostDataMultipart | FormData,
 	onUploadProgress?: progressCallback,
 	onDownloadProgress?: progressCallback
 }

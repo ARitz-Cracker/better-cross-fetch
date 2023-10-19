@@ -5,7 +5,7 @@ import http from "http";
 import { BufferToStream, StreamToBuffer } from "./node_lib/buffer-to-stream";
 import { PassthroughProgress } from "./node_lib/passthrough-progress";
 import querystring from "querystring";
-import { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, ResponseType, ResponseTypeMap } from "./common";
+import { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, PostDataMultipart, ResponseType, ResponseTypeMap } from "./common";
 import { randomBytes } from "crypto";
 import { Readable } from "stream";
 export { BetterCrossFetchOptions, BetterCrossFetchResponse, CrossFetchRequestError, ResponseType } from "./common";
@@ -65,14 +65,22 @@ export function betterCrossFetch<T extends ResponseType>(
 			headers.Accept = headers.Accept || "*/*";
 			headers["Accept-Encoding"] = "br, gzip, deflate";
 			// some CDNs yell at you if you don't have a User-Agent
-			headers["User-Agent"] = headers["User-Agent"] || "NodeJS/" + process.version.substring(1);
-			if(options.getData){
-				url += "?" + new URLSearchParams(options.getData);
-				delete options.getData;
-			}
+			headers["User-Agent"] = headers["User-Agent"] ||
+				process.title + "/" + (process.versions[process.title] || process.version);
+			
 			if(typeof url === "string"){
 				url = new URL(url);
 			}
+			if(options.getData){
+				url.searchParams.forEach((_, k, params) => {
+					params.delete(k);
+				});
+				(new URLSearchParams(options.getData)).forEach((v, k) => {
+					(url as URL).searchParams.set(k, v);
+				})
+				delete options.getData;
+			}
+			
 			
 			const h = url.protocol === "https:" ? https : http;
 			const httpOptions: http.RequestOptions = {};
@@ -221,6 +229,16 @@ export function betterCrossFetch<T extends ResponseType>(
 			if (options.onUploadProgress) {
 				uploadStream.on("progress", options.onUploadProgress);
 			}
+			if (options.post instanceof FormData) {
+				const data: {[key: string]: string | Blob;} = {};
+				for (const [name, value] of options.post.entries()) {
+					data[name] = value;
+				}
+				options.post = {
+					type: "multipart",
+					data
+				};
+			}
 			if (options.post) {
 				switch(options.post.type){
 					case "json":{
@@ -235,7 +253,7 @@ export function betterCrossFetch<T extends ResponseType>(
 						const optionsPost = options.post;
 						(async () => {
 							try{
-								const boundary = "nodejs-" + randomBytes(42).toString("base64").replace(/\//g, "_").replace(/\+/g, "-") + "-nodejs";
+								const boundary = "ayylmao-" + randomBytes(42).toString("base64url") + "-ayylmao";
 								let totalLength = 0;
 								const postDataHeaders: {[name: string]: Buffer;} = {};
 								const postDataStreams: {[name: string]: Readable;} = {};
@@ -257,7 +275,7 @@ export function betterCrossFetch<T extends ResponseType>(
 									}else if (value instanceof Blob){
 										postDataHeaders[name] = Buffer.from(
 											"--" + boundary + "\r\n" +
-											"Content-Disposition: form-data; name=\"" + mimeEncodeIfNeeded(name) + "\"; filename=\"undefined\"\r\n" +
+											"Content-Disposition: form-data; name=\"" + mimeEncodeIfNeeded(name) + "\"; filename=\"" + mimeEncodeIfNeeded(value.name + "") +"\"\r\n" +
 											"Content-Type: " + (value.type || "application/octet-stream") + "\r\n" +
 											"\r\n"
 										);

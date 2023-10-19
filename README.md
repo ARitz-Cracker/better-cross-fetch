@@ -1,38 +1,32 @@
 # better-cross-fetch
 
-Aritz's NIH syndrome strikes again!
+Adding yet another more request making library to the pile. Works on NodeJS and browsers.
 
-## What did you re-invent this time?
+It's "better" because I made it.
 
-A cross-platform (NodeJS and browser) fetch-like API!
+## ...why? There are so many...
 
-## Oh god why?
-
-Because default `fetch` didn't allow me to see upload/download progress, and I
-thought that since I was making a fetch wrapper, might as well make it work on
-the server-side as well for easy request making.
+While I would love to use the native `fetch` API on browsers and use one of the many pre-existing polyfills for NodeJS,
+my issue is that sometimes I want to show progress bars for larger file uploads, and so building on top of good ol'
+`XMLHttpRequest` was the answer. And if I was going to make a web-request library anyway, might as well make it
+cross-platform. 
 
 Oh and it also supports content compression on the NodeJS side, isn't that neat?
-
-## But surely there's other libraries out there that do these things?
-
-😏
 
 ## Fine, how do I use this?
 
 Like this.
 
 ```js
-const {betterCrossFetch, RESPONSE_TYPES, POST_TYPES} = require("better-cross-fetch")
+const {betterCrossFetch} = require("better-cross-fetch")
 
 const url = "https://aritzcracker.ca";
 const options = {
 	headers: {
 		"some-header": "some-value";
 	},
-	responseType: RESPONSE_TYPES.TEXT,
-	throwOnErrorStatus: true, 
-	postDataType: POST_TYPES.NONE,
+	responseType: "text",
+	throwOnErrorStatus: true,
 	onUploadProgress: (current, total) => {
 		console.log("Uploaded", current, "out of", total, "bytes!")
 	},
@@ -62,39 +56,28 @@ That will return something like this:
 
 It chooses how to interpret the server response. Here are the possible values and their effects
 
-* `RESPONSE_TYPES.HEAD` HEAD request, only gets the headers.
-* `RESPONSE_TYPES.TEXT` the result's `response` property will be a string.
-* `RESPONSE_TYPES.JSON` the response will be parsed as JSON, the result's `response` property will be the resulting object.
-* `RESPONSE_TYPES.BUFFER` the result's `response` property will be an `ArrayBuffer` on the browser, or a `Buffer` in node.
-* `RESPONSE_TYPES.BLOB` (Only available on browsers) the result's `response` property will be a `Blob`.
-* `RESPONSE_TYPES.STREAM` (Only available on NodeJS) the result's `response` property will be a `ReadableStream`.
+* `"head"` HEAD request, only gets the headers.
+* `"text"` The result's `response` property will be a string.
+* `"json"` The response will be parsed as JSON, the result's `response` property will be the resulting object. This
+also sets the `accept` request header to `application/json`.
+* `"buffer"` The result's `response` will be a `Buffer`.
+  * If this option is used on browsers, a global `Buffer` class is expected. Consider setting your bundler to use
+  [buffer-lite](https://www.npmjs.com/package/buffer-lite)!
+* `"blob"` The result's `response` property will be a `Blob`.
+* `"dom"` The result's `response` property will be a `Document` (Browser only).
+* `"stream"` The result's `response` property will be a `Readable` (readable stream) (NodeJS only).
 
-## Can I add querystring data to the URL without doing it myself?
+## Can I easily attach querystring data to the URL?
 
-Yep! Just set `getData` in your `options` to an object with key-value pairs! `{a: "b", c: "d"}` becomes `?a=b&c=d`
+Yep! In fact, there's multiple ways. You can either use the `URL` object as your URL, or use the `getData` property of
+the `options`, which can be an object representing a `string` -> `string` map, an array of string pairs, or a
+`URLSearchParams` object. Note that using `options.getData` will over-write any pre-existing query data in the `url`
+argument.
 
 ## How can I send POST data?
 
-First you must set the `postDataType` property in your `options`. It can be one of the following:
-
-* `POST_TYPES.URI` Normal, non-binary form data. (Use this if you're not uploading files)
-* `POST_TYPES.JSON` Yeah! This is a thing! Some APIs (other than my own) actually use this!
-* `POST_TYPES.MULTIPART` Use this if you're uploading files or other binary data
-
-Then set the `postData` property to an object with key-value pairs.
-
-On the browser, the values can be `string`'s, `ArrayBuffer`'s, `Uint8Array`'s, `Blob`'s, or `File`'s.
-
-On NodeJS, the values can be `string`'s, `Buffer`'s, `Uint8Array`'s or an object formatted like the following:
-```js
-{
-	filename: "file.txt",
-	size: 216, // THIS IS REQUIRED
-	type: "text/plain",
-	value: someReadableStream || someBuffer // THIS IS REQUIRED
-}
-```
+Take a look at the `post` property in your `options` and let your intellisense guide you. Use `{type: "uri", data: {...}}` for simple key-value pairs, or `{type: "multipart", data: {...}}` if you want to include binary data or files. There's also `{type: "json", data: {...}}` for API's that like that sorda thing. You're also free to put a `FormData` there if that's more convenient for you.
 
 ## Any pitfalls?
 
-There are 2 http statuses, 307 and 308, that require forms to be re-submitted at the redirect. POSTing streams will break things when those redirects occuer, because the stream has already been consumed on the first request, and this library doesn't provide a way to restart streams when this happens.
+There are 2 http statuses, 307 and 308, that require forms to be re-submitted at the redirect. POSTing NodeJS streams will break things when those redirects occur, because the stream has already been consumed on the first request, and this library doesn't provide a way to restart streams when this happens.
